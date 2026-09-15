@@ -10,68 +10,70 @@ is red right now". This action does, as a page you check when you feel like it r
 - Repositories without workflow runs drop out by themselves, so there is no list to maintain.
 - Private repository names are replaced with stable pseudonyms by default, because GitHub Pages sites are public.
 
-## Usage
-
-```yaml
-name: CI dashboard
-
-on:
-  schedule:
-    - cron: "23 5 * * *"
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: YOUR-USERNAME/ci-status-dashboard@v1
-        with:
-          token: ${{ secrets.DASHBOARD_TOKEN }}
-          anonymize-private: ${{ vars.ANONYMIZE_PRIVATE }}
-          anonymize-salt: ${{ secrets.ANONYMIZE_SALT }}
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: _site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-The action only writes `index.html`. Deploying it is up to you, so you can publish it somewhere other than GitHub Pages if you prefer.
-
-## Setup
+## Set it up
 
 1. Create a repository to host your dashboard. It has to be public unless you have a plan that includes access-controlled Pages.
-2. Add the workflow above as `.github/workflows/ci-dashboard.yml`, with `YOUR-USERNAME` replaced.
-3. Create a fine-grained personal access token under Settings > Developer settings > Personal access tokens > Fine-grained tokens. Set **Repository access** to
-   "All repositories", and under **Repository permissions** set **Actions** to "Read-only". Metadata is added for you. Nothing else is needed.
-4. Add the token and a salt to the dashboard repository:
+2. Add this as `.github/workflows/ci-dashboard.yml`, with `YOUR-USERNAME` replaced, and push it.
+
+   ```yaml
+   name: CI dashboard
+
+   on:
+     schedule:
+       - cron: "23 5 * * *"
+     workflow_dispatch:
+
+   permissions:
+     contents: read
+     pages: write
+     id-token: write
+
+   concurrency:
+     group: pages
+     cancel-in-progress: false
+
+   jobs:
+     build:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: YOUR-USERNAME/ci-status-dashboard@v1
+           with:
+             token: ${{ secrets.DASHBOARD_TOKEN }}
+             anonymize-private: ${{ vars.ANONYMIZE_PRIVATE }}
+             anonymize-salt: ${{ secrets.ANONYMIZE_SALT }}
+         - uses: actions/upload-pages-artifact@v4
+           with:
+             path: _site
+
+     deploy:
+       needs: build
+       runs-on: ubuntu-latest
+       environment:
+         name: github-pages
+         url: ${{ steps.deployment.outputs.page_url }}
+       steps:
+         - id: deployment
+           uses: actions/deploy-pages@v4
+   ```
+
+3. Create a token under Settings > Developer settings > Personal access tokens > Fine-grained tokens. Set **Repository access** to "All repositories" and
+   **Repository permissions > Actions** to "Read-only". Metadata is added for you; nothing else is needed. Copy the token.
+4. In the dashboard repository, go to Settings > Secrets and variables > Actions > **Secrets** and add two: `DASHBOARD_TOKEN` is the token from step 3, and
+   `ANONYMIZE_SALT` is any long random string, say 32 characters from a password generator. Keep a copy of the salt: changing it relabels every private
+   repository. With the CLI instead:
 
    ```
    gh secret set DASHBOARD_TOKEN --repo YOU/YOUR-DASHBOARD-REPO
    openssl rand -hex 32 | gh secret set ANONYMIZE_SALT --repo YOU/YOUR-DASHBOARD-REPO
    ```
 
-5. In the dashboard repository, open Settings > Pages and set **Source** to "GitHub Actions".
-6. Open Actions > CI dashboard > **Run workflow**. The page appears at `https://YOU.github.io/YOUR-DASHBOARD-REPO/`.
+5. In the same repository, open Settings > Pages and set **Source** to "GitHub Actions". The dropdown applies immediately, and there is no branch to pick. Skip
+   this and the deploy job fails.
+6. Open Actions > CI dashboard > **Run workflow**. The page appears at `https://YOU.github.io/YOUR-DASHBOARD-REPO/` and refreshes daily after that.
 
 Runs will start failing when the token expires, and the page will show its stale warning.
+
+The action only writes `index.html` into `_site`. Deploying it is up to you, so you can publish it somewhere other than GitHub Pages if you prefer.
 
 ## Private repositories
 
