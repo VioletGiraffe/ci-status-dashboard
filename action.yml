@@ -1,0 +1,39 @@
+name: CI status dashboard
+description: Builds a static page showing which of your repositories have failing GitHub Actions workflows on their default branch.
+branding:
+  icon: activity
+  color: red
+
+inputs:
+  token:
+    description: Fine-grained personal access token with read-only Actions access to all of your repositories.
+    required: true
+  anonymize-private:
+    description: Replace private repository names with stable pseudonyms and hide their details. Anything other than "false" means on.
+    required: false
+    default: "true"
+  anonymize-salt:
+    description: Secret key for the pseudonyms. Required when anonymize-private is on and you have private repositories.
+    required: false
+    default: ""
+  output-dir:
+    description: Directory the page (index.html) is written to.
+    required: false
+    default: _site
+  stale-after-hours:
+    description: The page shows a warning when it is older than this. 0 disables the warning.
+    required: false
+    default: "48"
+
+runs:
+  using: composite
+  steps:
+    - name: Build dashboard
+      shell: bash
+      env:
+        DASHBOARD_TOKEN: ${{ inputs.token }}
+        ANONYMIZE_PRIVATE: ${{ inputs.anonymize-private }}
+        ANONYMIZE_SALT: ${{ inputs.anonymize-salt }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        STALE_AFTER_HOURS: ${{ inputs.stale-after-hours }}
+      run: python3 "$GITHUB_ACTION_PATH/build_dashboard.py"
