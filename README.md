@@ -112,6 +112,8 @@ usable run on the default branch, and the repository takes the worst state among
 - Skipped, cancelled, and stale runs are passed over, so a cancelled rerun cannot hide an earlier failure.
 - Runs triggered by pull requests are ignored, since a pull request from a fork can report the default branch's name as its own.
 - Deleted and disabled workflows are ignored. Otherwise their last run would pin a repository to a state it can never leave.
+- The run building the page is skipped in the dashboard's own repository, which would otherwise always be in progress at that moment. Its other runs still
+  count, so that repository turns red like any other, but a failure in the deploy job only shows up on the next day's page.
 - Anything waiting, queued, running, or needing approval counts as running rather than passing.
 - A run result the action does not recognize counts as failing, on the grounds that a silent pass is the worse failure mode.
 - GitHub's own workflows, such as Pages builds and Dependabot jobs, are included like any other.

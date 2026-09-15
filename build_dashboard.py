@@ -23,6 +23,8 @@ import urllib.request
 
 API_URL = os.environ.get("GITHUB_API_URL", "https://api.github.com")
 SERVER_URL = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+SELF_REPO = os.environ.get("GITHUB_REPOSITORY", "")
+SELF_RUN_ID = os.environ.get("GITHUB_RUN_ID", "")
 
 STATES = ("failing", "pending", "passing")
 PASSED_CONCLUSIONS = {"success", "neutral"}
@@ -89,8 +91,10 @@ def pseudonym(salt, full_name):
     return f"private-{digest[:6]}"
 
 
-def latest_meaningful_run(runs):
+def latest_meaningful_run(runs, skip_run_id=None):
     for run in runs:  # the API returns newest first
+        if skip_run_id and str(run["id"]) == skip_run_id:
+            continue
         # A pull request whose head branch shares the default branch's name (typically a fork's main) reports that name as head_branch.
         if run["event"].startswith("pull_request"):
             continue
@@ -106,7 +110,7 @@ def run_state(run):
     return "passing" if run["conclusion"] in PASSED_CONCLUSIONS else "failing"
 
 
-def check_repo(token, repo):
+def check_repo(token, repo, skip_run_id=None):
     """Return the state of the latest meaningful default-branch run of each active workflow; empty if there are none."""
     base = f"/repos/{repo['full_name']}/actions"
     workflows = api_get_all(token, f"{base}/workflows", {"per_page": 100}, key="workflows")
@@ -116,7 +120,7 @@ def check_repo(token, repo):
         if workflow["state"] != "active":
             continue
         runs, _ = api_get(token, f"{base}/workflows/{workflow['id']}/runs", {"branch": repo["default_branch"], "per_page": 20})
-        run = latest_meaningful_run(runs["workflow_runs"])
+        run = latest_meaningful_run(runs["workflow_runs"], skip_run_id)
         if run:
             results.append({"name": workflow["name"], "state": run_state(run), "url": run["html_url"], "time": run["updated_at"]})
     return results
@@ -327,9 +331,11 @@ def main():
     for repo in repos:
         hidden = anonymize and repo["private"]
         label = pseudonym(salt, repo["full_name"]) if hidden else repo["name"]
+        # This run is in progress while it reads the API, so counting it would report the dashboard's own repository as running on every refresh.
+        skip = SELF_RUN_ID if repo["full_name"] == SELF_REPO else None
         # The dashboard repository is usually public, and so are its Actions logs: anything printed here must use the label, never the real name.
         try:
-            workflows = check_repo(token, repo)
+            workflows = check_repo(token, repo, skip)
         except ApiError as error:
             fail(f"Reading workflow runs of {label} failed: {error}")
         if workflows:
