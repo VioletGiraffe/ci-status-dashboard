@@ -291,7 +291,7 @@ def render(login, rows, generated, stale_hours):
             parts.append(f'<section class="group pending"><h2><span class="glyph" aria-hidden="true">◌</span>Running or waiting</h2>'
                          f'{table_html(groups["pending"])}</section>')
         if passing:
-            parts.append(f'<details class="group passing"><summary><h2><span class="glyph" aria-hidden="true">✓</span>{passing} passing</h2></summary>'
+            parts.append(f'<details class="group passing" open><summary><h2><span class="glyph" aria-hidden="true">✓</span>{passing} passing</h2></summary>'
                          f'{table_html(groups["passing"])}</details>')
         body = "\n".join(parts)
 
